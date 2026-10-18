@@ -1,85 +1,75 @@
-# Golden Voice — one application, direct connection, no API
+# Golden Voice
 
-Golden Voice used to be two repositories — `gv-frontend` (React SPA)
-and `goldenvoice-backend` (Express API) — talking to each other over a
-REST API. By Henry's decision (2026-10-18) that plan is abandoned:
-**the API is gone entirely, and the frontend and backend are connected
-directly in a single application.** This repository IS the former
-`goldenvoice-backend`, renamed in content to `golden-voice` and
-radically restructured into that single application; `gv-frontend`
-remains untouched as the archive of the old client.
+Golden Voice is a platform for anime dubbing. It publishes dubbed and
+translated works — anime and games — together with their episodes,
+scripts and media assets, and presents them to visitors as web pages
+backed by a PostgreSQL database.
 
-## How it works now
+## What it does
 
-```text
-Browser ──► Express server (one process)
-              ├─ page handlers (src/web/)
-              │    call the services DIRECTLY, as functions:
-              │    listWorks() · getPublishedWorkById() · …
-              │    then render the React pages to HTML on the server
-              └─ services → repositories → Prisma → PostgreSQL
-```
+- A catalogue of works with filtering by type and a detail page for
+  each work.
+- Each work can carry dubbed versions (per language, with episodes),
+  translated versions, and writing scripts.
+- Media files (covers, audio, video) are managed as assets: the
+  database stores their metadata, the files themselves live in media
+  storage.
+- User accounts with authentication, and audit logging of changes.
 
-- The browser receives finished HTML pages. There is **no fetch, no
-  `/api/v1`, no API client, no separate frontend build or deployment,
-  no CORS** — none of it exists in this codebase anymore.
-- Pages: `/` (home), `/works` (with `?type=` filtering and `?cursor=`
-  pagination as plain links), `/works/:workId` (detail), plus `/health`.
-- The page components live in `src/web/` — they are the old
-  React components, changed to receive their data as props from the
-  server handler instead of fetching it.
-- The backend's service and repository layers are unchanged in spirit:
-  modular monolith (auth, users, works, dubbed, translated, writing,
-  assets) over Prisma/PostgreSQL. Only their entry point changed —
-  page handlers (and future server-side form handlers) call them
-  directly instead of HTTP controllers.
+## Structure
 
-## Layout
+One application in a single process: the page handlers and the
+business services live side by side, and the pages are rendered on
+the server.
 
 ```text
 golden-voice/
   src/
-    app/          the Express application — pages + services, one process
-    web/          the frontend: pages, components, rendering (SSR)
-    modules/      services, repositories, DTOs per module
-    database/     the shared Prisma client
-    shared/       config, errors, middleware, utils
-  prisma/         schema.prisma
-  public/         global.css for the rendered pages
-  legacy/         everything removed by the unification, preserved:
-    spa-client/   the old Vite/React SPA (fetch + /api/v1 client)
-    api-layer/    the old REST routes + controllers of every module
-    vanilla-prototype/ · world-clock/  (from the first unification pass)
-  LICENSE         GV1.0 proprietary license (Ahmed Ali)
+    app/          application entry point and server bootstrap
+    web/          pages, components and server-side rendering
+    modules/      one folder per domain, each with its services,
+                  repositories and data-transfer objects:
+                    auth        accounts and authentication
+                    users       user profiles
+                    works       the works catalogue
+                    dubbed      dubbed versions and episodes
+                    translated  translated versions
+                    writing     scripts
+                    assets      media file metadata
+    database/     the shared Prisma database client
+    shared/       configuration, errors, middleware, utilities
+  prisma/         the database schema (schema.prisma)
+  public/         static files served with the pages (styles, media)
+  legacy/         earlier iterations kept for reference
 ```
 
-## Run it
+## Technology
+
+- Node.js and TypeScript
+- Express for the server, React for the pages (rendered server-side)
+- Prisma ORM with PostgreSQL
+
+## Running it
+
+Requirements: Node.js 20+, and a PostgreSQL database.
 
 ```bash
-cp .env.example .env          # fill in DATABASE_URL and JWT_SECRET
+cp .env.example .env    # set DATABASE_URL and JWT_SECRET
 npm install
 npm run prisma:generate
-npm run dev                   # the whole application on http://localhost:4000
+npx prisma db push      # create the tables from prisma/schema.prisma
+npm run dev             # http://localhost:4000
 ```
 
-Production: `npm run build && npm start` — one Node process.
+Production:
 
-## Notes
+```bash
+npm run build
+npm start
+```
 
-- Three minimal behaviour-preserving compile fixes were made while
-  unifying, because the original code did not pass its own build as
-  committed: an unused `Prisma` import (dubbed repository), a
-  `jwt.sign` typing mismatch (auth service), and a `HeadersInit`
-  indexing error (old client service, now in `legacy/spa-client`).
-- Write/admin features (creating works, auth pages, …) previously sat
-  behind the REST controllers. Their services are all still here; in
-  this architecture they return as server-rendered pages with form
-  handlers calling the services directly — no API will be reintroduced
-  for them.
-- Verified on 2026-10-18: install, `prisma generate` and the full
-  TypeScript build pass; the running server renders `/`, `/works` and
-  `/works/:workId` directly from service calls (a running PostgreSQL
-  is required for the data itself) and answers `/health`.
+Pages: `/` (home), `/works` (catalogue, filter with `?type=`),
+`/works/:workId` (work detail), `/health` (health check).
 
 ## License
 
