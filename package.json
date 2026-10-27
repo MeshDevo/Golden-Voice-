@@ -2,11 +2,12 @@
   "name": "golden-voice",
   "version": "0.1.0",
   "license": "SEE LICENSE IN LICENSE",
-  "description": "Golden Voice \u2014 one application: Express + Prisma services and the server-rendered pages in a single process. No API layer: pages call services directly.",
+  "description": "Golden Voice — one application: Express + Prisma services and the server-rendered pages in a single process. No API layer: pages call services directly.",
   "main": "dist/app/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/app/server.ts",
     "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test tests/*.test.cjs",
     "start": "node dist/app/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
