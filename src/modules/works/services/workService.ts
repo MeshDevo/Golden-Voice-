@@ -3,6 +3,7 @@ import { AuditAction, WorkStatus, WorkType } from "@prisma/client";
 import { notFoundError } from "../../../shared/errors/AppError";
 import { writeAuditLog } from "../../../shared/utils/auditLog";
 import { makeNextCursor } from "../../../shared/utils/cursorPagination";
+import { resolveWorkUpdateAuditAction } from "./workAuditAction";
 import {
   createWork,
   deleteWorkById,
@@ -57,7 +58,7 @@ export async function updateExistingWork(workId: string, workData: UpdateWorkDto
   return prismaClient.$transaction(async (db) => {
     const updated = await updateWorkById(db, workId, workData);
     await writeAuditLog(db, {
-      action: workData.status === WorkStatus.PUBLISHED ? AuditAction.PUBLISH : AuditAction.UPDATE,
+      action: resolveWorkUpdateAuditAction(existing.status, workData.status),
       entityType: "Work",
       entityId: workId,
       actorId,
